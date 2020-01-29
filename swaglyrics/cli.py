@@ -8,18 +8,17 @@ from colorama import init, Fore, Style
 
 
 def clear() -> None:
-    os.system('cls' if os.name == 'nt' else 'clear')  # clear command window
+    os.system("cls" if os.name == "nt" else "clear")  # clear command window
 
 
 # matches braces with feat included or text after -
-brc = re.compile(r'([(\[](feat|ft)[^)\]]*[)\]]|- .*)', re.I)
+brc = re.compile(r"([(\[](feat|ft)[^)\]]*[)\]]|- .*)", re.I)
 # matches non space or - or alphanumeric characters
-aln = re.compile(r'[^ \-a-zA-Z0-9]+')
-spc = re.compile(' *- *| +')  # matches one or more spaces
-wth = re.compile(r'(?: *\(with )([^)]+)\)')  # capture text after with
+aln = re.compile(r"[^ \-a-zA-Z0-9]+")
+spc = re.compile(" *- *| +")  # matches one or more spaces
+wth = re.compile(r"(?: *\(with )([^)]+)\)")  # capture text after with
 # match only latin characters,
-nlt = re.compile(
-    r'[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]')
+nlt = re.compile(r"[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]")
 # built using latin character tables (basic, supplement, extended a,b and extended additional)
 
 
@@ -36,32 +35,33 @@ def stripper(song: str, artist: str) -> str:
     :param artist: song artist
     :return: formatted url path
     """
-    song = re.sub(brc, '', song).strip(
-    )  # remove braces and included text with feat and text after '- '
+    song = re.sub(
+        brc, "", song
+    ).strip()  # remove braces and included text with feat and text after '- '
     ft = wth.search(song)  # find supporting artists if any
     if ft:
         # remove (with supporting artists) from song
-        song = song.replace(ft.group(), '')
+        song = song.replace(ft.group(), "")
         ar = ft.group(1)  # the supporting artist(s)
-        if '&' in ar:  # check if more than one supporting artist and add them to artist
-            artist += f'-{ar}'
+        if "&" in ar:  # check if more than one supporting artist and add them to artist
+            artist += f"-{ar}"
         else:
-            artist += f'-and-{ar}'
-    song_data = artist + '-' + song
+            artist += f"-and-{ar}"
+    song_data = artist + "-" + song
     # swap some special characters
-    url_data = song_data.replace('&', 'and')
+    url_data = song_data.replace("&", "and")
     # replace /, !, _ with space to support more songs
-    url_data = url_data.replace('/', ' ').replace('!', ' ').replace('_', ' ')
-    for ch in ['Ø', 'ø']:
+    url_data = url_data.replace("/", " ").replace("!", " ").replace("_", " ")
+    for ch in ["Ø", "ø"]:
         if ch in url_data:
-            url_data = url_data.replace(ch, '')
+            url_data = url_data.replace(ch, "")
     # remove non-latin characters before unidecode
-    url_data = re.sub(nlt, '', url_data)
+    url_data = re.sub(nlt, "", url_data)
     url_data = unidecode(url_data)  # convert accents and other diacritics
     # remove punctuation and other characters
-    url_data = re.sub(aln, '', url_data)
+    url_data = re.sub(aln, "", url_data)
     # substitute one or more spaces to -
-    url_data = re.sub(spc, '-', url_data.strip())
+    url_data = re.sub(spc, "-", url_data.strip())
     return url_data
 
 
@@ -74,20 +74,22 @@ def get_lyrics(song, artist):
     :return: song lyrics or None if lyrics unavailable
     """
     url_data = stripper(song, artist)  # generate url path using stripper()
-    if url_data.startswith('-') or url_data.endswith('-'):
-        return None  # url path had either song in non-latin, artist in non-latin, or both
+    if url_data.startswith("-") or url_data.endswith("-"):
+        return (
+            None
+        )  # url path had either song in non-latin, artist in non-latin, or both
     # format the url with the url path
-    url = f'https://genius.com/{url_data}-lyrics'
+    url = f"https://genius.com/{url_data}-lyrics"
     try:
         page = requests.get(url)
         page.raise_for_status()
     except requests.exceptions.HTTPError:
-        url_data = requests.get(f'{backend_url}/stripper', data={
-            'song': song,
-            'artist': artist}).text
+        url_data = requests.get(
+            f"{backend_url}/stripper", data={"song": song, "artist": artist}
+        ).text
         if not url_data:
             return None
-        url = 'https://genius.com/{}-lyrics'.format(url_data)
+        url = "https://genius.com/{}-lyrics".format(url_data)
         page = requests.get(url)
 
     html = BeautifulSoup(page.text, "html.parser")
@@ -106,30 +108,28 @@ def lyrics(song: str, artist: str, make_issue: bool = True) -> str:
     :return: lyrics if song playing
     """
     try:
-        with open(unsupported_txt, encoding='utf-8') as unsupported:
-            if f'{song} by {artist}' in unsupported.read():
-                return f'Lyrics unavailable for {song} by {artist}.\n'
+        with open(unsupported_txt, encoding="utf-8") as unsupported:
+            if f"{song} by {artist}" in unsupported.read():
+                return f"Lyrics unavailable for {song} by {artist}.\n"
     except FileNotFoundError:
         pass
     init(autoreset=True)
-    print(Fore.CYAN + Style.BRIGHT +
-          f'\nGetting lyrics for {song} by {artist}.\n')
+    print(Fore.CYAN + Style.BRIGHT + f"\nGetting lyrics for {song} by {artist}.\n")
     lyrics = get_lyrics(song, artist)
     if not lyrics:
         lyrics = f"Couldn't get lyrics for {song} by {artist}.\n"
         # Log song and artist for which lyrics couldn't be obtained
-        with open(unsupported_txt, 'a', encoding='utf-8') as f:
-            f.write(f'{song} by {artist} \n')
+        with open(unsupported_txt, "a", encoding="utf-8") as f:
+            f.write(f"{song} by {artist} \n")
         if make_issue:
-            r = requests.post(f'{backend_url}/unsupported', data={
-                'song': song,
-                'artist': artist,
-                'version': __version__
-            })
+            r = requests.post(
+                f"{backend_url}/unsupported",
+                data={"song": song, "artist": artist, "version": __version__},
+            )
             if r.status_code == 200:
                 lyrics += r.text
     return lyrics
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass
