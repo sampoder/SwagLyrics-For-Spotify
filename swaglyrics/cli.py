@@ -25,7 +25,8 @@ aln = re.compile(r"[^ \-a-zA-Z0-9]+")
 spc = re.compile(" *- *| +")  # matches one or more spaces
 wth = re.compile(r"(?: *\(with )([^)]+)\)")  # capture text after with
 # match only latin characters,
-nlt = re.compile(r"[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]")
+nlt = re.compile(
+    r"[^\x00-\x7F\x80-\xFF\u0100-\u017F\u0180-\u024F\u1E00-\u1EFF]")
 # built using latin character tables (basic, supplement, extended a,b and extended additional)
 
 
@@ -42,9 +43,8 @@ def stripper(song: str, artist: str) -> str:
     :param artist: song artist
     :return: formatted url path
     """
-    song = re.sub(
-        brc, "", song
-    ).strip()  # remove braces and included text with feat and text after '- '
+    song = re.sub(brc, "", song).strip(
+    )  # remove braces and included text with feat and text after '- '
     ft = wth.search(song)  # find supporting artists if any
     if ft:
         # remove (with supporting artists) from song
@@ -91,9 +91,11 @@ def get_lyrics(song, artist):
         page = requests.get(url)
         page.raise_for_status()
     except requests.exceptions.HTTPError:
-        url_data = requests.get(
-            f"{backend_url}/stripper", data={"song": song, "artist": artist}
-        ).text
+        url_data = requests.get(f"{backend_url}/stripper",
+                                data={
+                                    "song": song,
+                                    "artist": artist
+                                }).text
         if not url_data:
             return None
         url = "https://genius.com/{}-lyrics".format(url_data)
@@ -121,7 +123,8 @@ def lyrics(song: str, artist: str, make_issue: bool = True) -> str:
     except FileNotFoundError:
         pass
     init(autoreset=True)
-    print(Fore.CYAN + Style.BRIGHT + f"\nGetting lyrics for {song} by {artist}.\n")
+    print(Fore.CYAN + Style.BRIGHT +
+          f"\nGetting lyrics for {song} by {artist}.\n")
     lyrics = get_lyrics(song, artist)
     if not lyrics:
         lyrics = f"Couldn't get lyrics for {song} by {artist}.\n"
@@ -131,7 +134,11 @@ def lyrics(song: str, artist: str, make_issue: bool = True) -> str:
         if make_issue:
             r = requests.post(
                 f"{backend_url}/unsupported",
-                data={"song": song, "artist": artist, "version": __version__},
+                data={
+                    "song": song,
+                    "artist": artist,
+                    "version": __version__
+                },
             )
             if r.status_code == 200:
                 lyrics += r.text
